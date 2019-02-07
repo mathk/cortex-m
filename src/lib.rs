@@ -47,5 +47,6 @@ pub mod interrupt;
 pub mod itm;
 pub mod peripheral;
 pub mod register;
+pub mod clock;
 
 pub use peripheral::Peripherals;
