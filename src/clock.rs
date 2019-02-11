@@ -9,7 +9,8 @@ use crate::peripheral::syst::SystClkSource;
 use crate::peripheral::SYST;
 
 
-pub enum FreqRange {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub (crate) enum FreqRange {
     MegaHertz = 1_000_000,
     KiloHertz = 1_000,
     Hertz = 1,
@@ -28,12 +29,21 @@ impl FreqRange {
 /// Frequency abstraction
 ///
 /// Using the frequency we can calculate the counter for some delay
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Frequency {
-    resolution: FreqRange,
-    value: u32,
+    pub (crate) resolution: FreqRange,
+    pub (crate) value: u32,
 }
 
 impl Frequency {
+
+    fn new(value: u32, resolution: FreqRange) -> Frequency {
+        Frequency {
+            resolution,
+            value
+        }
+    }
+
     pub fn tick(&self) -> Duration {
         match self.resolution {
             FreqRange::MegaHertz => Duration::from_nanos(1_000 / self.value as u64),
@@ -56,6 +66,36 @@ impl Div<u32> for Frequency {
         res.map(|r| Frequency {resolution: r, value: value / rhs })
     }
 }
+
+
+/// Extension trait that adds convenience methods to the `u32` type
+pub trait U32Ext {
+
+    /// Wrap in `Hertz`
+    fn hz(self) -> Frequency;
+
+    /// Wrap in `KiloHertz`
+    fn khz(self) -> Frequency;
+
+    /// Wrap in `MegaHertz`
+    fn mhz(self) -> Frequency;
+}
+
+impl U32Ext for u32 {
+
+    fn hz(self) -> Frequency {
+        Frequency::new(self, FreqRange::Hertz)
+    }
+
+    fn khz(self) -> Frequency {
+        Frequency::new(self, FreqRange::KiloHertz)
+    }
+
+    fn mhz(self) -> Frequency {
+        Frequency::new(self, FreqRange::MegaHertz)
+    }
+}
+
 
 /// The main clock trait
 pub trait Clock {

@@ -48,5 +48,7 @@ pub mod itm;
 pub mod peripheral;
 pub mod register;
 pub mod clock;
+#[cfg(test)]
+mod test;
 
 pub use peripheral::Peripherals;
