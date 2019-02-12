@@ -10,6 +10,7 @@ use crate::peripheral::SYST;
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u64)]
 pub (crate) enum FreqRange {
     MegaHertz = 1_000_000_000,
     KiloHertz = 1_000_000,
@@ -52,13 +53,8 @@ impl Frequency {
         Duration::from_nanos(1_000_000_000_000 * self.denominator as u64 / (self.numerator as u64 * self.resolution as u64))
     }
 
-    pub fn ticks_in(&self, d: Duration) -> u64 {
-        match self.resolution {
-            FreqRange::MegaHertz => (1_000_000 * d.as_secs() + d.subsec_nanos() as u64 / 1_000) * (self.numerator as u64 / self.denominator as u64),
-            FreqRange::KiloHertz => (1_000 * d.as_secs() + d.subsec_nanos() as u64 / 1_000_000) * (self.numerator as u64 / self.denominator as u64),
-            FreqRange::Hertz => (d.as_secs() + d.subsec_nanos() as u64 / 1_000_000_000) * (self.numerator as u64 / self.denominator as u64),
-            FreqRange::MilliHertz => (d.as_secs() / 1_000 + d.subsec_nanos() as u64 / 1_000_000_000_000) * (self.numerator as u64 / self.denominator as u64),
-        }
+    pub const fn ticks_in(&self, d: Duration) -> u64 {
+        (d.as_secs() * 1_000_000_000u64 + d.subsec_nanos() as u64) * self.resolution as u64 * self.numerator as u64 / (self.denominator as u64 * 1_000_000_000_000)
     }
 
     pub fn into_hertz(&self) -> Frequency {
