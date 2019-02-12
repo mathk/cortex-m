@@ -14,7 +14,11 @@ pub trait Delay {
     fn delay(&mut self, d: Duration);
 
     /// Pause execution assuming interrupt is enabled
-    fn delay_with_interrupt(&mut self, d: Duration);
+    /// and correctly handler.
+    fn delay_with_interrupt(&mut self, d: Duration) {
+        // By default is a not optimal delay.
+        self.delay(d);
+    }
 }
 
 /// Delay base on Systick.
