@@ -18,17 +18,6 @@ pub (crate) enum FreqRange {
     MilliHertz = 1,
 }
 
-impl FreqRange {
-    fn scale_down(&self) -> Option<FreqRange> {
-        match self {
-            FreqRange::MegaHertz => Some(FreqRange::KiloHertz),
-            FreqRange::KiloHertz => Some(FreqRange::Hertz),
-            FreqRange::Hertz => Some(FreqRange::MilliHertz),
-            FreqRange::MilliHertz => None,
-        }
-    }
-}
-
 /// Frequency abstraction
 ///
 /// Using the frequency we can calculate the counter for some delay
@@ -94,6 +83,7 @@ impl Div<u32> for Frequency {
     type Output = Frequency;
 
     fn div(self, rhs: u32) -> Frequency {
+        assert!(rhs != 0);
         Frequency {
             resolution: self.resolution,
             numerator: self.numerator,
@@ -154,7 +144,7 @@ impl U32Ext for u32 {
 
 
 /// The main clock trait
-pub trait Clock {
+pub trait Clocks {
 
     fn get_external_syst_clock(&self) -> Frequency;
     fn get_core_clock(&self) -> Frequency;
