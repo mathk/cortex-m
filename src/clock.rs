@@ -11,9 +11,10 @@ use crate::peripheral::SYST;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub (crate) enum FreqRange {
-    MegaHertz = 1_000_000,
-    KiloHertz = 1_000,
-    Hertz = 1,
+    MegaHertz,
+    KiloHertz,
+    Hertz,
+    MilliHertz,
 }
 
 impl FreqRange {
@@ -21,7 +22,8 @@ impl FreqRange {
         match self {
             FreqRange::MegaHertz => Some(FreqRange::KiloHertz),
             FreqRange::KiloHertz => Some(FreqRange::Hertz),
-            FreqRange::Hertz => None
+            FreqRange::Hertz => Some(FreqRange::MilliHertz),
+            FreqRange::MilliHertz => None,
         }
     }
 }
@@ -49,6 +51,16 @@ impl Frequency {
             FreqRange::MegaHertz => Duration::from_nanos(1_000 / self.value as u64),
             FreqRange::KiloHertz => Duration::from_nanos(1_000_000 / self.value as u64),
             FreqRange::Hertz => Duration::from_nanos(1_000_000_000 / self.value as u64),
+            FreqRange::MilliHertz => Duration::from_nanos(1_000_000_000_000 / self.value as u64),
+        }
+    }
+
+    pub fn ticks_in(&self, d: Duration) -> u64 {
+        match self.resolution {
+            FreqRange::MegaHertz => (1_000_000 * d.as_secs() + d.subsec_nanos() as u64 / 1_000) * (self.value as u64),
+            FreqRange::KiloHertz => (1_000 * d.as_secs() + d.subsec_nanos() as u64 / 1_000_000) * (self.value as u64),
+            FreqRange::Hertz => (d.as_secs() + d.subsec_nanos() as u64 / 1_000_000_000) * (self.value as u64),
+            FreqRange::MilliHertz => (d.as_secs() / 1_000 + d.subsec_nanos() as u64 / 1_000_000_000_000) * (self.value as u64),
         }
     }
 }
@@ -59,7 +71,7 @@ impl Div<u32> for Frequency {
     fn div(self, rhs: u32) -> Option<Frequency> {
         let mut value = self.value;
         let mut res = Some(self.resolution);
-        while res.is_some() && value % rhs < value {
+        while res.is_some() && value % rhs >= value {
             value = value * 1_000;
             res = res.and_then(|r| r.scale_down())
         }
@@ -71,14 +83,23 @@ impl Div<u32> for Frequency {
 /// Extension trait that adds convenience methods to the `u32` type
 pub trait U32Ext {
 
-    /// Wrap in `Hertz`
+    /// Wrap in Frequency
     fn hz(self) -> Frequency;
 
-    /// Wrap in `KiloHertz`
+    /// Wrap in Frequency
     fn khz(self) -> Frequency;
 
-    /// Wrap in `MegaHertz`
+    /// Wrap in Frequency
     fn mhz(self) -> Frequency;
+
+    /// Wrap in millisecond Duration
+    fn ms(self) -> Duration;
+
+    /// Wrap in microsecond Duration
+    fn us(self) -> Duration;
+
+    /// Wrap in microsecond Duration
+    fn s(self) -> Duration;
 }
 
 impl U32Ext for u32 {
@@ -93,6 +114,18 @@ impl U32Ext for u32 {
 
     fn mhz(self) -> Frequency {
         Frequency::new(self, FreqRange::MegaHertz)
+    }
+
+    fn s(self) -> Duration {
+        Duration::from_secs(self as u64)
+    }
+
+    fn ms(self) -> Duration {
+        Duration::from_millis(self as u64)
+    }
+
+    fn us(self) -> Duration {
+        Duration::from_micros(self as u64)
     }
 }
 

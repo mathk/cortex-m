@@ -48,6 +48,7 @@ pub mod itm;
 pub mod peripheral;
 pub mod register;
 pub mod clock;
+pub mod delay;
 #[cfg(test)]
 mod test;
 
