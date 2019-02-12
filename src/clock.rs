@@ -11,10 +11,10 @@ use crate::peripheral::SYST;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub (crate) enum FreqRange {
-    MegaHertz,
-    KiloHertz,
-    Hertz,
-    MilliHertz,
+    MegaHertz = 1_000_000_000,
+    KiloHertz = 1_000_000,
+    Hertz = 1_000,
+    MilliHertz = 1,
 }
 
 impl FreqRange {
@@ -34,7 +34,8 @@ impl FreqRange {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Frequency {
     pub (crate) resolution: FreqRange,
-    pub (crate) value: u32,
+    pub (crate) numerator: u32,
+    pub (crate) denominator: u32,
 }
 
 impl Frequency {
@@ -42,40 +43,71 @@ impl Frequency {
     fn new(value: u32, resolution: FreqRange) -> Frequency {
         Frequency {
             resolution,
-            value
+            numerator: value,
+            denominator: 1,
         }
     }
 
     pub fn tick(&self) -> Duration {
         match self.resolution {
-            FreqRange::MegaHertz => Duration::from_nanos(1_000 / self.value as u64),
-            FreqRange::KiloHertz => Duration::from_nanos(1_000_000 / self.value as u64),
-            FreqRange::Hertz => Duration::from_nanos(1_000_000_000 / self.value as u64),
-            FreqRange::MilliHertz => Duration::from_nanos(1_000_000_000_000 / self.value as u64),
+            FreqRange::MegaHertz => Duration::from_nanos(1_000 * self.denominator as u64 / self.numerator as u64),
+            FreqRange::KiloHertz => Duration::from_nanos(1_000_000 * self.denominator as u64 / self.numerator as u64),
+            FreqRange::Hertz => Duration::from_nanos(1_000_000_000 * self.denominator as u64 / self.numerator as u64),
+            FreqRange::MilliHertz => Duration::from_nanos(1_000_000_000_000 * self.denominator as u64 / self.numerator as u64),
         }
     }
 
     pub fn ticks_in(&self, d: Duration) -> u64 {
         match self.resolution {
-            FreqRange::MegaHertz => (1_000_000 * d.as_secs() + d.subsec_nanos() as u64 / 1_000) * (self.value as u64),
-            FreqRange::KiloHertz => (1_000 * d.as_secs() + d.subsec_nanos() as u64 / 1_000_000) * (self.value as u64),
-            FreqRange::Hertz => (d.as_secs() + d.subsec_nanos() as u64 / 1_000_000_000) * (self.value as u64),
-            FreqRange::MilliHertz => (d.as_secs() / 1_000 + d.subsec_nanos() as u64 / 1_000_000_000_000) * (self.value as u64),
+            FreqRange::MegaHertz => (1_000_000 * d.as_secs() + d.subsec_nanos() as u64 / 1_000) * (self.numerator as u64 / self.denominator as u64),
+            FreqRange::KiloHertz => (1_000 * d.as_secs() + d.subsec_nanos() as u64 / 1_000_000) * (self.numerator as u64 / self.denominator as u64),
+            FreqRange::Hertz => (d.as_secs() + d.subsec_nanos() as u64 / 1_000_000_000) * (self.numerator as u64 / self.denominator as u64),
+            FreqRange::MilliHertz => (d.as_secs() / 1_000 + d.subsec_nanos() as u64 / 1_000_000_000_000) * (self.numerator as u64 / self.denominator as u64),
+        }
+    }
+
+    pub fn into_hertz(&self) -> Frequency {
+        Frequency {
+            resolution: FreqRange::Hertz,
+            numerator: (self.resolution as u32 * self.numerator) / (FreqRange::Hertz as u32 * self.denominator),
+            denominator: 1,
+        }
+    }
+
+    pub fn into_kilo(&self) -> Frequency {
+        Frequency {
+            resolution: FreqRange::KiloHertz,
+            numerator: (self.resolution as u32 * self.numerator) / (FreqRange::KiloHertz as u32 * self.denominator),
+            denominator: 1,
+        }
+    }
+
+    pub fn into_mega(&self) -> Frequency {
+        Frequency {
+            resolution: FreqRange::MegaHertz,
+            numerator: (self.resolution as u32 * self.numerator) / (FreqRange::MegaHertz as u32 * self.denominator),
+            denominator: 1,
+        }
+    }
+
+    pub fn into_milli(&self) -> Frequency {
+        Frequency {
+            resolution: FreqRange::MilliHertz,
+            numerator: (self.resolution as u32 * self.numerator) / (FreqRange::MilliHertz as u32 * self.denominator),
+            denominator: 1,
         }
     }
 }
 
 impl Div<u32> for Frequency {
-    type Output = Option<Frequency>;
+    type Output = Frequency;
 
-    fn div(self, rhs: u32) -> Option<Frequency> {
-        let mut value = self.value;
-        let mut res = Some(self.resolution);
-        while res.is_some() && value % rhs >= value {
-            value = value * 1_000;
-            res = res.and_then(|r| r.scale_down())
+    fn div(self, rhs: u32) -> Frequency {
+        Frequency {
+            resolution: self.resolution,
+            numerator: self.numerator,
+            denominator: self.denominator * rhs
         }
-        res.map(|r| Frequency {resolution: r, value: value / rhs })
     }
 }
 

@@ -3,10 +3,12 @@ use crate::clock::U32Ext;
 
 #[test]
 fn divide() {
-    assert_eq!((1.mhz() / 2).unwrap().resolution, FreqRange::KiloHertz);
-    assert_eq!((1.mhz() / 2).unwrap().value, 500);
-    assert_eq!((1.mhz() / 8000).unwrap().resolution, FreqRange::Hertz);
-    assert_eq!((1.mhz() / 8000).unwrap().value, 125);
+    assert_eq!((1.mhz() / 2).into_kilo().resolution, FreqRange::KiloHertz);
+    assert_eq!((1.mhz() / 2).into_kilo().numerator, 500);
+    assert_eq!((1.mhz() / 8000).into_hertz().resolution, FreqRange::Hertz);
+    assert_eq!((1.mhz() / 8000).into_hertz().numerator, 125);
+    assert_eq!((1.mhz() / 80000).into_hertz().resolution, FreqRange::Hertz);
+    assert_eq!((1.mhz() / 80000).into_hertz().numerator, 12);
 
 }
 
