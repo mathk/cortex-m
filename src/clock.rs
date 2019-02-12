@@ -48,13 +48,8 @@ impl Frequency {
         }
     }
 
-    pub fn tick(&self) -> Duration {
-        match self.resolution {
-            FreqRange::MegaHertz => Duration::from_nanos(1_000 * self.denominator as u64 / self.numerator as u64),
-            FreqRange::KiloHertz => Duration::from_nanos(1_000_000 * self.denominator as u64 / self.numerator as u64),
-            FreqRange::Hertz => Duration::from_nanos(1_000_000_000 * self.denominator as u64 / self.numerator as u64),
-            FreqRange::MilliHertz => Duration::from_nanos(1_000_000_000_000 * self.denominator as u64 / self.numerator as u64),
-        }
+    pub const fn tick(&self) -> Duration {
+        Duration::from_nanos(1_000_000_000_000 * self.denominator as u64 / (self.numerator as u64 * self.resolution as u64))
     }
 
     pub fn ticks_in(&self, d: Duration) -> u64 {
