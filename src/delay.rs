@@ -75,6 +75,7 @@ where
             let current = min(MAX_RVR, ticks);
             self.syst.set_reload(current as u32);
             self.syst.clear_current();
+            self.syst.enable_interrupt();
             self.syst.enable_counter();
             ticks -= current;
             while !self.syst.has_wrapped() {
