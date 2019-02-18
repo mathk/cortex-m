@@ -1,5 +1,6 @@
 //! Implement delay abstraction.
 
+#![allow(missing_docs)]
 use crate::peripheral::SYST;
 use crate::peripheral::syst::SystClkSource;
 use crate::clock::Clocks;
@@ -18,6 +19,34 @@ pub trait Delay {
     fn delay_with_interrupt(&mut self, d: Duration) {
         // By default is a not optimal delay.
         self.delay(d);
+    }
+}
+
+/// Capture an instant from a delay.
+pub struct SysTickInstant<T>
+where T : Clocks
+{
+    delay: SysTickDelay<T>,
+}
+
+impl<T> SysTickInstant<T>
+where T : Clocks
+{
+    fn now(delay: SysTickDelay<T>) -> Self {
+        SysTickInstant {
+            delay,
+        }
+    }
+
+    pub fn elapse(&mut self) -> Duration {
+        if self.delay.has_wrapped() {
+            panic!("Can not tell the elapse time as we have wrapped.")
+        }
+        self.delay.tick() * (0x0FF_FFFF - self.delay.get_current())
+    }
+
+    pub fn stop(self) -> SysTickDelay<T> {
+        self.delay.stop()
     }
 }
 
@@ -44,6 +73,30 @@ where
             clocks
         }
     }
+
+    pub fn start(mut self) ->  SysTickInstant<T> {
+        self.syst.set_reload(0x00FF_FFFF);
+        self.syst.clear_current();
+        self.syst.enable_counter();
+        SysTickInstant::now(self)
+    }
+
+    pub fn stop(mut self) -> Self {
+        self.syst.disable_counter();
+        self
+    }
+
+    pub fn tick(&mut self) -> Duration {
+        self.clocks.get_syst_clock(&mut self.syst).tick()
+    }
+
+    pub fn has_wrapped(&mut self) -> bool {
+        self.syst.has_wrapped()
+    }
+
+    pub fn get_current(&mut self) -> u32 {
+        SYST::get_current()
+    }
 }
 
 
@@ -62,7 +115,7 @@ where
             self.syst.clear_current();
             self.syst.enable_counter();
             ticks -= current;
-            while !self.syst.has_wrapped() {}
+            while !self.has_wrapped() {}
             self.syst.disable_counter();
         }
     }
@@ -78,10 +131,11 @@ where
             self.syst.enable_interrupt();
             self.syst.enable_counter();
             ticks -= current;
-            while !self.syst.has_wrapped() {
+            while !self.has_wrapped() {
                 wfe()
             }
             self.syst.disable_counter();
+            self.syst.disable_interrupt();
         }
     }
 
